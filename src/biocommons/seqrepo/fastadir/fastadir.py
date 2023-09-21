@@ -5,6 +5,8 @@ import logging
 import os
 import sqlite3
 import time
+import threading
+import contextlib
 
 import yoyo
 
@@ -25,6 +27,24 @@ _logger = logging.getLogger(__name__)
 # opening two repositories with different versions is not possible.
 
 expected_schema_version = 1
+
+
+class LockableFabgzReader(contextlib.AbstractContextManager):
+    """
+    Class that implements ContextManager and wraps a FabgzReader.
+    The FabgzReader is returned when acquired in a contextmanager with statement.
+    """
+
+    def __init__(self, path):
+        self.lock = threading.Lock()
+        self.fabgz_reader = FabgzReader(path)
+
+    def __enter__(self):
+        self.lock.acquire()
+        return self.fabgz_reader
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.lock.release()
 
 
 class FastaDir(BaseReader, BaseWriter):
@@ -58,6 +78,7 @@ class FastaDir(BaseReader, BaseWriter):
         self._writing = None
         self._db = None
         self._writeable = writeable
+        self._lock_fabgz = False
 
         if self._writeable:
             os.makedirs(self._root_dir, exist_ok=True)
@@ -79,10 +100,14 @@ class FastaDir(BaseReader, BaseWriter):
                     schema_version, expected_schema_version
                 )
             )
-            
+
         if fd_cache_size == 0:
             _logger.info(f"File descriptor caching disabled")
             self._open_for_reading = self._open_for_reading_uncached
+        elif fd_cache_size == -1:
+            _logger.info(f"File descriptor caching unlimited with locks")
+            self._lock_fabgz = True
+            self._open_for_reading = self._open_for_reading_lockable_cache
         else:
             _logger.warning(f"File descriptor caching enabled (size={fd_cache_size})")
             @functools.lru_cache(maxsize=fd_cache_size)
@@ -137,6 +162,10 @@ class FastaDir(BaseReader, BaseWriter):
             self.commit()
 
         path = os.path.join(self._root_dir, rec["relpath"])
+        if self._lock_fabgz:
+            with self._open_for_reading(path) as fabgz:
+                # _logger.info(f"Locking reader to {path}")
+                return fabgz.fetch(seq_id, start, end)
         fabgz = self._open_for_reading(path)
         return fabgz.fetch(seq_id, start, end)
 
@@ -223,6 +252,19 @@ class FastaDir(BaseReader, BaseWriter):
     def _open_for_reading_uncached(self, path):
         _logger.debug("Opening for reading: " + path)
         return FabgzReader(path)
+
+    @functools.lru_cache()
+    def _open_for_reading_lockable_cache(self, path):
+        """
+        Opens a FabgzReader to path, wraps in a LockableFabgzReader for use in context managers.
+        Places it in an LRU cache so file is only opened once per FastaDir object. Caller must
+        lock the LockableFabgzReader or otherwise handle concurrent access if sharing between
+        in-process concurrent execution threads, such as asyncio (e.g. WSGI/ASGI web servers)
+        """
+        _logger.debug("Opening for reading: %s", path)
+        if not os.path.exists(path):
+            _logger.error("_open_for_reading path does not exist: %s", path)
+        return LockableFabgzReader(path)
 
     def _dump_aliases(self):
         import prettytable

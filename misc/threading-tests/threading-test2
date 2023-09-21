@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+"""test seqrepo for file descriptor exhaustion, especially in threading context
+
+https://github.com/biocommons/biocommons.seqrepo/issues/112
+
+The idea: read a bunch of NMs on stdin. Fetch the sequence for each in a threading context.
+
+"""
+
+import argparse
+import logging
+import queue
+import pathlib
+import random
+import threading
+import time
+import sys
+import multiprocess as multiprocessing
+
+
+from biocommons.seqrepo import SeqRepo
+
+
+_logger = logging.getLogger()
+close_sentinel_value = -1
+
+
+class MPWorker(multiprocessing.Process):
+    def __init__(self, q: multiprocessing.Queue, sr: SeqRepo):
+        self.q = q
+        self.sr = sr
+        self.n = 0
+        super().__init__()
+
+    def run(self):
+        while True:
+            try:
+                ac = self.q.get(False)
+                # _logger.info(f"{self} got value from queue {ac}")
+                if ac == close_sentinel_value:
+                    break
+                self.sr.fetch(ac, 0, 5)
+                self.n += 1
+            except queue.Empty:
+                # _logger.info(f"{self}: Done; processed {self.n} accessions")
+                pass
+
+        if hasattr(self.sr.sequences._open_for_reading, "cache_info"):
+            w_sr_cacheinfo = self.sr.sequences._open_for_reading.cache_info()
+            print(w_sr_cacheinfo)
+
+
+class MPWorker2(multiprocessing.Process):
+    def __init__(self, q: multiprocessing.Queue, seqrepo_path: str, fd_cache_size=0):
+        self.q = q
+        self.seqrepo_path = seqrepo_path
+        self.fd_cache_size = fd_cache_size
+        self.n = 0
+        super().__init__()
+
+    def run(self):
+        while True:
+            try:
+                ac = self.q.get(False)
+                if ac == close_sentinel_value:
+                    _logger.info(f"{self}: Done; processed {self.n} accessions")
+                    break
+                # _logger.info(f"Making new seqrepo object")
+                _sr = SeqRepo(self.seqrepo_path, self.fd_cache_size)
+                _sr.fetch(ac, 0, 5)
+                self.n += 1
+            except queue.Empty:
+                pass
+
+
+class Worker(threading.Thread):
+    def __init__(self, q: queue.Queue, sr: SeqRepo):
+        self.q = q
+        self.sr = sr
+        self.n = 0
+        super().__init__()
+
+    def run(self):
+        while True:
+            try:
+                ac = self.q.get(False)
+                if ac == close_sentinel_value:
+                    _logger.info(f"{self}: Done; processed {self.n} accessions")
+                    self.q.task_done()
+                    break
+                # _logger.info(f"{self} Fetching {ac}")
+                self.sr.fetch(ac, 0, 5)
+                self.q.task_done()
+                self.n += 1
+            except queue.Empty:
+                pass
+
+        if hasattr(self.sr.sequences._open_for_reading, "cache_info"):
+            w_sr_cacheinfo = self.sr.sequences._open_for_reading.cache_info()
+            print(w_sr_cacheinfo)
+
+
+class Worker2(threading.Thread):
+    def __init__(self, q: queue.Queue, seqrepo_path: str, fd_cache_size=0):
+        self.q = q
+        self.seqrepo_path = seqrepo_path
+        self.fd_cache_size = fd_cache_size
+        self.n = 0
+        super().__init__()
+
+    def run(self):
+        while True:
+            try:
+                ac = self.q.get(False)
+                if ac == close_sentinel_value:
+                    _logger.info(f"{self}: Done; processed {self.n} accessions")
+                    self.q.task_done()
+                    break
+                _sr = SeqRepo(self.seqrepo_path, self.fd_cache_size)
+                _sr.fetch(ac, 0, 5)
+                self.q.task_done()
+                self.n += 1
+            except queue.Empty:
+                pass
+
+        # if hasattr(self.sr.sequences._open_for_reading, "cache_info"):
+        #     w_sr_cacheinfo = _sr.sequences._open_for_reading.cache_info()
+        #     print(w_sr_cacheinfo)
+
+
+def parse_args(argv):
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("-n", "--n-threads", type=int, default=1)
+    ap.add_argument("-s", "--seqrepo-path", type=pathlib.Path, required=True)
+    ap.add_argument("-m", "--max-accessions", type=int)
+    ap.add_argument("-f", "--fd-cache-size", type=int, default=0)
+    ap.add_argument("--use-multiprocessing", action='store_true', default=False)
+    ap.add_argument("--reinit-seqrepo", action='store_true', default=False)
+    opts = ap.parse_args(argv)
+    return opts
+
+
+def main(argv=sys.argv[1:]):
+    import coloredlogs
+    import sys
+
+    coloredlogs.install(level="INFO")
+
+    opts = parse_args(argv)
+
+    sr = SeqRepo(opts.seqrepo_path, fd_cache_size=opts.fd_cache_size)
+
+    if opts.use_multiprocessing:
+        q = multiprocessing.Queue()
+        if opts.reinit_seqrepo:
+            worker_class = MPWorker2
+            worker_args = {
+                "q": q,
+                "seqrepo_path": opts.seqrepo_path,
+                "fd_cache_size": opts.fd_cache_size
+            }
+        else:
+            worker_class = MPWorker
+            worker_args = {"q": q, "sr": sr}
+    else:
+        q = queue.Queue()
+        if opts.reinit_seqrepo:
+            _logger.info("Using seqrepo in reinit mode")
+            worker_class = Worker2
+            worker_args = {
+                "q": q,
+                "seqrepo_path": opts.seqrepo_path,
+                "fd_cache_size": opts.fd_cache_size
+            }
+        else:
+            worker_class = Worker
+            worker_args = {"q": q, "sr": sr}
+
+    _logger.info(f"Starting run with {opts.n_threads} threads")
+
+    workers = []
+
+    for _ in range(opts.n_threads):
+        w = worker_class(**worker_args)
+        workers.append(w)
+        # q.put(close_sentinel_value)
+
+    acs = set(a["alias"] for a in sr.aliases.find_aliases(namespace="RefSeq", alias="NM_%"))
+    acs = random.sample(sorted(acs), opts.max_accessions or len(acs))
+    qs = len(acs)
+    _logger.info(f"Queueing {qs} accessions")
+
+    def queue_filler_target(q, acs, n_workers):
+        for ac in acs:
+            q.put(ac)
+        for _ in range(n_workers):
+            q.put(close_sentinel_value)
+        _logger.info(f"Done filling input queue")
+    if opts.use_multiprocessing:
+        t_filler = multiprocessing.Process(target=queue_filler_target, args=(q, acs, len(workers)))
+        t_filler.start()
+    else:
+        t_filler = threading.Thread(target=queue_filler_target, args=(q, acs, len(workers)))
+        t_filler.start()
+    # let it get a head start, is faster anyways
+    time.sleep(3)
+
+    t0 = time.time()
+    for w in workers:
+        _logger.debug(f"Starting worker {w}")
+        w.start()
+
+    for w in workers:
+        w.join()
+    t1 = time.time()
+    td = t1 - t0
+    rate = float(qs) / td
+    _logger.info(f"Fetched {qs} sequences in {td} s with {opts.n_threads} threads; {rate:.0f} seq/sec")
+
+
+if __name__ == "__main__":
+    main()
+    # m = 10000
+    # title = "test 1, threading, 1 thread, no fd cache"
+    # t0 = time.time()
+    # main(["-s", "/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29",
+    #       "-m", str(m),
+    #       "-n", "2",
+    #       "--fd-cache-size", "-1"])
+    # t1 = time.time()
+    # print(f"{title}: {t1-t0} {m/(t1-t0)} seq/sec")
