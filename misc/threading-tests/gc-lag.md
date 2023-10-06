@@ -111,3 +111,121 @@ requests.exceptions.HTTPError: 500 Server Error: INTERNAL SERVER ERROR for url: 
 /Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 997
 /Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 997
 ```
+
+
+## Test 3
+
+This test uses the changeset in biocommons/seqrepo-rest-service#15
+
+- ulimit -n 1000
+- 2000 queries
+- With FastaDir cache, default limit
+- lsof on seqrepo directory every 1 second
+```
+(venv) kferrite@wm12f-58b threading-tests % python gc-lag.py -s /Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 -f -1 -m 2000 | ggrep 'open file count'
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 16
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 27
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 35
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 42
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 46
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 46
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 47
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 49
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 50
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 51
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 51
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 51
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 53
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 53
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 54
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 55
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 57
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 57
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 58
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 59
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 59
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 59
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 60
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 60
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 60
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 60
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 60
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 61
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 61
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 62
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 62
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 63
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 63
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 63
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 63
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 64
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 64
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 64
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 65
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 67
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 67
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 68
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 68
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 69
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 71
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 71
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 71
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 71
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 71
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 73
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 74
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 75
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 76
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 76
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 76
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 76
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 76
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 76
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 76
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 76
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 77
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 77
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 77
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 78
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 79
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 80
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 80
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 80
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 81
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 81
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 82
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 83
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 83
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 83
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 83
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 83
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 84
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 84
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 85
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 86
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 86
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 86
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 86
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 87
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 87
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 87
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 87
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 88
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 88
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 88
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 88
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 89
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 89
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 89
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 90
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 90
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 90
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 91
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 91
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 91
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 91
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 91
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 91
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 91
+/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29 open file count 91
+```
