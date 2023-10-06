@@ -79,6 +79,7 @@ class FastaDir(BaseReader, BaseWriter):
         self._db = None
         self._writeable = writeable
         self._lock_fabgz = False
+        self._close_fabgz = False
 
         if self._writeable:
             os.makedirs(self._root_dir, exist_ok=True)
@@ -108,6 +109,10 @@ class FastaDir(BaseReader, BaseWriter):
             _logger.info(f"File descriptor caching unlimited with locks")
             self._lock_fabgz = True
             self._open_for_reading = self._open_for_reading_lockable_cache
+        elif fd_cache_size == -2:
+            _logger.info(f"File descriptor caching disabled, with close")
+            self._close_fabgz = True
+            self._open_for_reading = self._open_for_reading_uncached
         else:
             _logger.warning(f"File descriptor caching enabled (size={fd_cache_size})")
             @functools.lru_cache(maxsize=fd_cache_size)
@@ -167,7 +172,10 @@ class FastaDir(BaseReader, BaseWriter):
                 # _logger.info(f"Locking reader to {path}")
                 return fabgz.fetch(seq_id, start, end)
         fabgz = self._open_for_reading(path)
-        return fabgz.fetch(seq_id, start, end)
+        val = fabgz.fetch(seq_id, start, end)
+        if self._close_fabgz:
+            fabgz._fh.close()
+        return val
 
     @functools.lru_cache(maxsize=SEQREPO_LRU_CACHE_MAXSIZE)
     def fetch_seqinfo(self, seq_id):

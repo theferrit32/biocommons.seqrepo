@@ -24,7 +24,6 @@ import argparse
 import pathlib
 import random
 import subprocess
-import sys
 import logging
 import time
 
@@ -76,10 +75,10 @@ class LsofWorker(multiprocessing.Process):
             pass
 
 
-def main(argv=sys.argv[1:]):
+def main(argv):
     opts = parse_args(argv)
 
-    sr = SeqRepo(opts.seqrepo_path, fd_cache_size=opts.fd_cache_size)
+    sr = SeqRepo(root_dir=opts.seqrepo_path, fd_cache_size=opts.fd_cache_size) 
 
     acs = set(a["alias"] for a in sr.aliases.find_aliases(namespace="RefSeq", alias="NM_%"))
     acs = random.sample(sorted(acs), opts.max_accessions or len(acs))
@@ -99,6 +98,7 @@ def main(argv=sys.argv[1:]):
 
 if __name__ == "__main__":
     import coloredlogs
+    import sys
     coloredlogs.install(level="WARN")
     _logger.info("Calling main")
-    main()
+    main(argv=sys.argv[1:])

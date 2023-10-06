@@ -3,12 +3,12 @@
 # Assumes mac doesn't have the GNU date command and uses gdate from homebrew coreutils
 
 seqrepo_path=/Users/kferrite/dev/biocommons.seqrepo/seqrepo/2021-01-29
-m=10000
+m=1000
 n=4
 
 function m_time {
     t0=$(gdate +%s%N)
-    $@ #>/dev/null
+    $@ >&2
     t1=$(gdate +%s%N)
     python -c "print(f'{($t1-$t0)/1e9:.2f}')"
 }
